@@ -13,17 +13,21 @@
 # limitations under the License.
 
 import collections
-
+from unittest import mock
 from absl.testing import parameterized
+
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python import core as tff
 from tensorflow_federated.python.common_libs import test
+from tensorflow_federated.python.core.api import intrinsics
+from tensorflow_federated.python.core.backends.native import execution_contexts
+from tensorflow_federated.python.core.utils import computation_utils
 from tensorflow_federated.python.learning import federated_averaging
 from tensorflow_federated.python.learning import keras_utils
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_utils
+from tensorflow_federated.python.learning.framework import dataset_reduce
 from tensorflow_federated.python.learning.framework import optimizer_utils
 
 
@@ -62,11 +66,15 @@ class FederatedAveragingClientWithModelTest(test.TestCase,
         non_trainable=[0.0],
     )
 
-  def test_client_tf(self):
+  @parameterized.named_parameters(('non-simulation', False),
+                                  ('simulation', True))
+  def test_client_tf(self, simulation):
     model = self.create_model()
     dataset = self.create_dataset()
     client_tf = federated_averaging.ClientFedAvg(
-        model, tf.keras.optimizers.SGD(learning_rate=0.1))
+        model,
+        tf.keras.optimizers.SGD(learning_rate=0.1),
+        use_experimental_simulation_loop=simulation)
     client_outputs = self.evaluate(client_tf(dataset, self.initial_weights()))
 
     # Both trainable parameters should have been updated,
@@ -112,6 +120,25 @@ class FederatedAveragingClientWithModelTest(test.TestCase,
         self.evaluate(client_outputs.optimizer_output['has_non_finite_delta']),
         1)
 
+  @parameterized.named_parameters(('non-simulation', False),
+                                  ('simulation', True))
+  @mock.patch.object(
+      dataset_reduce,
+      '_dataset_reduce_fn',
+      wraps=dataset_reduce._dataset_reduce_fn)
+  def test_client_tf_dataset_reduce_fn(self, simulation, mock_method):
+    model = self.create_model()
+    dataset = self.create_dataset()
+    client_tf = federated_averaging.ClientFedAvg(
+        model,
+        tf.keras.optimizers.SGD(learning_rate=0.1),
+        use_experimental_simulation_loop=simulation)
+    client_tf(dataset, self.initial_weights())
+    if simulation:
+      mock_method.assert_not_called()
+    else:
+      mock_method.assert_called()
+
 
 class FederatedAveragingModelTffTest(test.TestCase, parameterized.TestCase):
 
@@ -136,10 +163,10 @@ class FederatedAveragingModelTffTest(test.TestCase, parameterized.TestCase):
       federated_averaging.build_federated_averaging_process(
           model_fn=model_examples.LinearRegression,
           client_optimizer_fn=tf.keras.optimizers.SGD,
-          stateful_model_broadcast_fn=tff.utils.StatefulBroadcastFn(
+          stateful_model_broadcast_fn=computation_utils.StatefulBroadcastFn(
               initialize_fn=lambda: (),
               next_fn=lambda state, weights:  # pylint: disable=g-long-lambda
-              (state, tff.federated_broadcast(weights))),
+              (state, intrinsics.federated_broadcast(weights))),
           broadcast_process=optimizer_utils.build_stateless_broadcaster(
               model_weights_type=model_weights_type))
 
@@ -150,10 +177,10 @@ class FederatedAveragingModelTffTest(test.TestCase, parameterized.TestCase):
       federated_averaging.build_federated_averaging_process(
           model_fn=model_examples.LinearRegression,
           client_optimizer_fn=tf.keras.optimizers.SGD,
-          stateful_delta_aggregate_fn=tff.utils.StatefulAggregateFn(
+          stateful_delta_aggregate_fn=computation_utils.StatefulAggregateFn(
               initialize_fn=lambda: (),
               next_fn=lambda state, value, weight=None:  # pylint: disable=g-long-lambda
-              (state, tff.federated_mean(value, weight))),
+              (state, intrinsics.federated_mean(value, weight))),
           aggregation_process=optimizer_utils.build_stateless_mean(
               model_delta_type=model_weights_type.trainable))
 
@@ -251,4 +278,5 @@ class FederatedAveragingModelTffTest(test.TestCase, parameterized.TestCase):
 
 
 if __name__ == '__main__':
+  execution_contexts.set_local_execution_context()
   test.main()

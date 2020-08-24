@@ -1,6 +1,29 @@
-package(default_visibility = ["//tensorflow_federated:__subpackages__"])
+package_group(
+    name = "default_visibility",
+    includes = ["//tensorflow_federated/python/simulation:simulation_visibility"],
+    packages = [
+        # Subpackages
+        "//tensorflow_federated/python/simulation/datasets/...",
+    ],
+)
+
+package(default_visibility = [":default_visibility"])
 
 licenses(["notice"])
+
+py_library(
+    name = "datasets",
+    srcs = ["__init__.py"],
+    srcs_version = "PY3",
+    visibility = ["//tensorflow_federated/python/simulation:__pkg__"],
+    deps = [
+        ":cifar100",
+        ":dataset_utils",
+        ":emnist",
+        ":shakespeare",
+        ":stackoverflow",
+    ],
+)
 
 py_library(
     name = "cifar100",
@@ -18,19 +41,6 @@ py_test(
     srcs_version = "PY3",
     tags = ["nopresubmit"],
     deps = [":cifar100"],
-)
-
-py_library(
-    name = "datasets",
-    srcs = ["__init__.py"],
-    srcs_version = "PY3",
-    deps = [
-        ":cifar100",
-        ":dataset_utils",
-        ":emnist",
-        ":shakespeare",
-        ":stackoverflow",
-    ],
 )
 
 py_library(
@@ -67,10 +77,8 @@ py_test(
     name = "emnist_test",
     size = "small",
     srcs = ["emnist_test.py"],
-    local = True,
     python_version = "PY3",
     srcs_version = "PY3",
-    tags = ["nopresubmit"],
     deps = [":emnist"],
 )
 
@@ -78,12 +86,36 @@ py_library(
     name = "shakespeare",
     srcs = ["shakespeare.py"],
     srcs_version = "PY3",
-    deps = ["//tensorflow_federated/python/simulation:hdf5_client_data"],
+    deps = [
+        "//tensorflow_federated/python/simulation:from_tensor_slices_client_data",
+        "//tensorflow_federated/python/simulation:hdf5_client_data",
+    ],
+)
+
+py_test(
+    name = "shakespeare_test",
+    size = "small",
+    srcs = ["shakespeare_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [":shakespeare"],
 )
 
 py_library(
     name = "stackoverflow",
     srcs = ["stackoverflow.py"],
     srcs_version = "PY3",
-    deps = ["//tensorflow_federated/python/simulation:hdf5_client_data"],
+    deps = [
+        "//tensorflow_federated/python/simulation:from_tensor_slices_client_data",
+        "//tensorflow_federated/python/simulation:hdf5_client_data",
+    ],
+)
+
+py_test(
+    name = "stackoverflow_test",
+    size = "small",
+    srcs = ["stackoverflow_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [":stackoverflow"],
 )

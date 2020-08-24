@@ -12,7 +12,6 @@ package_group(
         "//tensorflow_federated/python/core/test/...",
 
         # Namespace Dependencies
-        "//tensorflow_federated/python/core",
         "//tensorflow_federated",
 
         # TODO(b/143772942): This visibility is circular, it would be clearer if
@@ -32,18 +31,7 @@ py_library(
     srcs_version = "PY3",
     visibility = [
         "//tensorflow_federated:__pkg__",
-        "//tensorflow_federated/python/core:__pkg__",
         "//tensorflow_federated/tools:__subpackages__",
-    ],
-    deps = [
-        ":computation_base",
-        ":computation_types",
-        ":computations",
-        ":intrinsics",
-        ":placements",
-        ":typed_object",
-        ":value_base",
-        ":values",
     ],
 )
 
@@ -99,8 +87,7 @@ py_test(
         ":intrinsics",
         ":value_base",
         "//tensorflow_federated/python/common_libs:test",
-        "//tensorflow_federated/python/core/backends/native:execution_contexts",
-        "//tensorflow_federated/python/core/impl:test",
+        "//tensorflow_federated/python/core/impl:do_not_use_compiler",
         "//tensorflow_federated/python/core/impl/context_stack:get_context_stack",
         "//tensorflow_federated/python/core/impl/executors:execution_context",
         "//tensorflow_federated/python/core/impl/executors:executor_stacks",
@@ -133,10 +120,7 @@ py_test(
         ":value_base",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/common_libs:test",
-        "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/impl/context_stack:context_base",
-        "//tensorflow_federated/python/core/impl/executors:executor_stacks",
-        "//tensorflow_federated/python/core/impl/executors:executor_test_utils",
     ],
 )
 
@@ -179,7 +163,7 @@ py_test(
     deps = [
         ":value_base",
         ":values",
-        "//tensorflow_federated/python/core/impl:federated_computation_context",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
+        "//tensorflow_federated/python/core/impl/federated_context:federated_computation_context",
     ],
 )

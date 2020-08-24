@@ -17,11 +17,17 @@ import collections
 
 import tensorflow as tf
 
-from tensorflow_federated.python import core as tff
+from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.api import intrinsics
+from tensorflow_federated.python.core.api import placements
+from tensorflow_federated.python.core.utils import tf_computation_utils
 from tensorflow_federated.python.learning import model_utils
+from tensorflow_federated.python.learning.framework import dataset_reduce
 
 
-def build_federated_evaluation(model_fn):
+def build_federated_evaluation(model_fn,
+                               use_experimental_simulation_loop: bool = False):
   """Builds the TFF computation for federated evaluation of the given model.
 
   Args:
@@ -29,6 +35,8 @@ def build_federated_evaluation(model_fn):
       must *not* capture TensorFlow tensors or variables and use them. The model
       must be constructed entirely from scratch on each invocation, returning
       the same pre-constructed model each call will result in an error.
+    use_experimental_simulation_loop: Controls the reduce loop function for
+        input dataset. An experimental reduce loop is used for simulation.
 
   Returns:
     A federated computation (an instance of `tff.Computation`) that accepts
@@ -42,38 +50,43 @@ def build_federated_evaluation(model_fn):
   with tf.Graph().as_default():
     model = model_fn()
     model_weights_type = model_utils.weights_type_from_model(model)
-    batch_type = tff.to_type(model.input_spec)
+    batch_type = computation_types.to_type(model.input_spec)
 
-  @tff.tf_computation(model_weights_type, tff.SequenceType(batch_type))
+  @computations.tf_computation(model_weights_type,
+                               computation_types.SequenceType(batch_type))
   def client_eval(incoming_model_weights, dataset):
     """Returns local outputs after evaluting `model_weights` on `dataset`."""
-
     model = model_utils.enhance(model_fn())
 
     @tf.function
     def _tf_client_eval(incoming_model_weights, dataset):
       """Evaluation TF work."""
-
-      tff.utils.assign(model.weights, incoming_model_weights)
+      tf_computation_utils.assign(model.weights, incoming_model_weights)
 
       def reduce_fn(prev_loss, batch):
         model_output = model.forward_pass(batch, training=False)
         return prev_loss + tf.cast(model_output.loss, tf.float64)
 
-      dataset.reduce(tf.constant(0.0, dtype=tf.float64), reduce_fn)
+      dataset_reduce_fn = dataset_reduce.build_dataset_reduce_fn(
+          use_experimental_simulation_loop)
+      dataset_reduce_fn(
+          reduce_fn=reduce_fn,
+          dataset=dataset,
+          initial_state_fn=lambda: tf.constant(0, dtype=tf.float64))
 
       return collections.OrderedDict([('local_outputs',
                                        model.report_local_outputs())])
 
     return _tf_client_eval(incoming_model_weights, dataset)
 
-  @tff.federated_computation(
-      tff.FederatedType(model_weights_type, tff.SERVER),
-      tff.FederatedType(tff.SequenceType(batch_type), tff.CLIENTS))
+  @computations.federated_computation(
+      computation_types.FederatedType(model_weights_type, placements.SERVER),
+      computation_types.FederatedType(
+          computation_types.SequenceType(batch_type), placements.CLIENTS))
   def server_eval(server_model_weights, federated_dataset):
-    client_outputs = tff.federated_map(
-        client_eval,
-        [tff.federated_broadcast(server_model_weights), federated_dataset])
+    client_outputs = intrinsics.federated_map(client_eval, [
+        intrinsics.federated_broadcast(server_model_weights), federated_dataset
+    ])
     return model.federated_output_computation(client_outputs.local_outputs)
 
   return server_eval

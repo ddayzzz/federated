@@ -51,6 +51,7 @@ py_test(
         ":encoding_utils",
         ":optimizer_utils",
         "//tensorflow_federated/python/common_libs:test",
+        "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/core/utils:computation_utils",
         "//tensorflow_federated/python/learning:model_examples",
@@ -90,9 +91,24 @@ py_test(
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
         "//tensorflow_federated/python/core/api:placements",
+        "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/core/utils:computation_utils",
         "//tensorflow_federated/python/learning:model_examples",
         "//tensorflow_federated/python/learning:model_utils",
     ],
+)
+
+py_library(
+    name = "dataset_reduce",
+    srcs = ["dataset_reduce.py"],
+    srcs_version = "PY3",
+)
+
+py_test(
+    name = "dataset_reduce_test",
+    srcs = ["dataset_reduce_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [":dataset_reduce"],
 )
