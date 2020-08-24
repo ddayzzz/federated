@@ -104,7 +104,7 @@ def from_flags(
         input_spec=model_input_spec,
         loss=loss_builder(),
         metrics=metrics_builder())
-
+  # 创建 fedavg 的过程
   return fed_avg_schedule.build_fed_avg_process(
       model_fn=tff_model_fn,
       client_optimizer_fn=client_optimizer_fn,

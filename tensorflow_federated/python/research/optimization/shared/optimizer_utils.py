@@ -165,6 +165,7 @@ def create_optimizer_fn_from_flags(
       `tf.keras.optimizers.Optimizer`.
   """
   def prefixed(basename):
+    # basename 有client和server
     return '{}_{}'.format(prefix, basename) if prefix else basename
 
   optimizer_flag_name = prefixed('optimizer')

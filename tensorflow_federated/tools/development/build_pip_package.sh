@@ -79,9 +79,9 @@ main() {
   pushd "${temp_dir}"
 
   # Create a virtual environment
-  virtualenv --python=python3 "venv"
-  source "venv/bin/activate"
-  pip install --upgrade pip
+#  virtualenv --python=python3 "venv"
+#  source "venv/bin/activate"
+#  pip install --upgrade pip
 
   # Build pip package
   flags=()

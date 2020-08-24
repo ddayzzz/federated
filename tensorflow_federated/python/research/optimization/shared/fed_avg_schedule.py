@@ -52,6 +52,7 @@ ModelWeights = collections.namedtuple('ModelWeights', 'trainable non_trainable')
 def _initialize_optimizer_vars(model: tff.learning.Model,
                                optimizer: tf.keras.optimizers.Optimizer):
   """Ensures variables holding the state of `optimizer` are created."""
+  # 创建一个 模型的 delta 的一个 placeholder
   delta = tf.nest.map_structure(tf.zeros_like, _get_weights(model).trainable)
   model_weights = _get_weights(model)
   grads_and_vars = tf.nest.map_structure(lambda x, v: (x, v), delta,
@@ -98,7 +99,7 @@ class ServerState(object):
     def assign_weights(keras_weights, tff_weights):
       for k, w in zip(keras_weights, tff_weights):
         k.assign(w)
-
+    # 将当前发送的模型赋值为当前客户端所拥有的模型
     assign_weights(keras_model.trainable_weights, reference_model.trainable)
     assign_weights(keras_model.non_trainable_weights,
                    reference_model.non_trainable)
